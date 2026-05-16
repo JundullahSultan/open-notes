@@ -1,0 +1,708 @@
+/* ========== SMOOTHEST MOBILE CSS (CHATGPT‑INSPIRED) ========== */
+@font-face {
+  font-family: "MyCustomPersianFont";
+  src: url("/fonts/segoeuithis.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+html {
+  font-size: var(--base-font-size, 16px);
+  transition: none; /* prevent font-size transition repaints */
+}
+
+:root {
+  /* Dark theme (default) */
+  --chat-bg: #1a1a1f;
+  --chat-surface: #222228;
+  --chat-card: #2c2c33;
+  --chat-border: rgba(255, 255, 255, 0.05);
+  --accent: #10a37f;
+  --accent-dark: #0d8c6b;
+  --accent-glow: rgba(16, 163, 127, 0.25);
+  --text-primary: #ececf1;
+  --text-secondary: #b0b0bb;
+  --text-muted: #7c7c8a;
+  --danger: #ef4444;
+  --heading-start: #ffffff;
+  --li-hover: #35353e;
+  --ghost-btn-bg: rgba(255, 255, 255, 0.04);
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 10px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 8px 20px rgba(0, 0, 0, 0.35);
+  --radius-sm: 0.6rem;
+  --radius-md: 0.8rem;
+  --radius-lg: 1rem;
+}
+
+[data-theme="light"] {
+  --chat-bg: #f4f4f8;
+  --chat-surface: #ffffff;
+  --chat-card: #fafafc;
+  --chat-border: rgba(0, 0, 0, 0.06);
+  --accent-glow: rgba(16, 163, 127, 0.15);
+  --text-primary: #1a1a1f;
+  --text-secondary: #5a5a6e;
+  --text-muted: #8e8e9a;
+  --heading-start: #1a1a1f;
+  --li-hover: #f0f0f5;
+  --ghost-btn-bg: rgba(0, 0, 0, 0.02);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 3px 8px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 6px 16px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="warm"] {
+  --chat-bg: #faf5e6;
+  --chat-surface: #fffdf7;
+  --chat-card: #f7efdd;
+  --chat-border: rgba(0, 0, 0, 0.05);
+  --accent: #d97706;
+  --accent-dark: #b95f04;
+  --accent-glow: rgba(217, 119, 6, 0.2);
+  --text-primary: #3d3529;
+  --text-secondary: #6e5f4a;
+  --text-muted: #9a8b76;
+  --heading-start: #3d3529;
+  --li-hover: #efe4cf;
+  --ghost-btn-bg: rgba(0, 0, 0, 0.03);
+}
+
+[data-theme="cool"] {
+  --chat-bg: #f0f4fa;
+  --chat-surface: #ffffff;
+  --chat-card: #e6eef7;
+  --chat-border: rgba(16, 42, 67, 0.06);
+  --accent: #0284c7;
+  --accent-dark: #02659e;
+  --accent-glow: rgba(2, 132, 199, 0.2);
+  --text-primary: #0f2940;
+  --text-secondary: #3d5570;
+  --text-muted: #6a7f99;
+  --heading-start: #0f2940;
+  --li-hover: #dae4f0;
+  --ghost-btn-bg: rgba(16, 42, 67, 0.03);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family:
+    "MyCustomPersianFont",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  background: var(--chat-bg);
+  color: var(--text-primary);
+  padding: 0.75rem;
+  min-height: 100vh;
+  line-height: 1.5;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  overscroll-behavior: none; /* prevents pull-to-refresh conflicts */
+}
+html,
+body {
+  overscroll-behavior: none;
+}
+
+button,
+.fab,
+.toggle-icon-btn,
+.close-btn {
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation; /* faster tap response */
+}
+
+/* ---------- CONTAINER (no backdrop‑filter, pure color) ---------- */
+.container {
+  max-width: 720px;
+  margin: 0 auto;
+  background: var(--chat-surface);
+  border-radius: var(--radius-lg);
+  padding: 0.75rem;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--chat-border);
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease,
+    border-color 0.3s ease;
+}
+
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.8rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--chat-border);
+  position: relative;
+}
+
+.header-container::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  right: 0;
+  width: 70px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 1px;
+  transition: width 0.2s;
+}
+
+h1 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  background: linear-gradient(135deg, var(--heading-start) 30%, var(--accent));
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+/* ---------- SETTINGS BUTTON ---------- */
+.theme-btn {
+  background: var(--ghost-btn-bg);
+  border: 1px solid var(--chat-border);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition:
+    transform 0.15s ease,
+    background 0.2s;
+  transform: translateZ(0);
+  will-change: transform;
+}
+.theme-btn .material-symbols-outlined {
+  font-size: 1.25rem;
+}
+.theme-btn:hover {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+  transform: scale(1.1) rotate(20deg);
+}
+
+/* ---------- SEARCH INPUT ---------- */
+#searchInput {
+  width: 100%;
+  background: var(--chat-card);
+  border: 1px solid var(--chat-border);
+  border-radius: 2rem;
+  padding: 0.65rem 1rem;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  margin-bottom: 0.8rem;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+  font-family: inherit;
+  transform: translateZ(0);
+}
+#searchInput:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+/* ---------- MEDICINE LIST (hardware‑accelerated swipes) ---------- */
+ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+li {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  padding: 0 !important;
+  border: none;
+  background: transparent !important;
+  contain: layout style paint; /* isolates repaints */
+}
+
+li,
+.swipe-content {
+  touch-action: pan-y;
+}
+
+.swipe-content,
+.swipe-content * {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
+}
+
+/* Red background behind the swipe */
+.swipe-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--danger);
+  display: flex;
+  align-items: center;
+  z-index: 1;
+  border-radius: var(--radius-sm);
+  transform: translateZ(0);
+}
+.swipe-background .material-symbols-outlined {
+  position: absolute;
+  left: 1.5rem;
+  color: white;
+  font-size: 2rem;
+}
+
+/* Foreground card – only transforms, no layout changes */
+.swipe-content {
+  position: relative;
+  background: var(--chat-card);
+  padding: 0.6rem 0.8rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 2;
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.15s ease-out;
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden; /* reduces flicker */
+}
+
+li.holding .swipe-content {
+  transform: scale(0.97);
+  background-color: var(--chat-surface);
+}
+
+/* ---------- TOAST (undo + errors) ---------- */
+.toast {
+  position: fixed;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  display: none;
+  opacity: 0;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--chat-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--chat-border);
+  padding: 0.7rem 1.2rem;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+  z-index: 1200;
+}
+.toast.show {
+  display: flex;
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.toast.undo-toast {
+  pointer-events: auto;
+}
+
+.undo-toast #undoBtn {
+  background: transparent;
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  padding: 0.35rem 0.8rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-weight: 600;
+  font-family: inherit;
+  font-size: 0.9rem;
+  transition: background 0.2s;
+}
+
+/* ---------- CARD CONTENT ---------- */
+.med-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.id {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: var(--ghost-btn-bg);
+  border: 1px solid var(--chat-border);
+  padding: 0.15rem 0.45rem;
+  border-radius: 0.4rem;
+  min-width: 28px;
+  text-align: center;
+}
+
+.name {
+  font-weight: 500;
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+.price {
+  background: rgba(16, 163, 127, 0.12);
+  color: var(--accent);
+  padding: 0.15rem 0.65rem;
+  border-radius: 2rem;
+  font-weight: 700;
+  font-size: 0.85rem;
+  transition:
+    background 0.2s,
+    color 0.2s;
+}
+li:hover .price {
+  background: var(--accent);
+  color: white;
+}
+
+mark {
+  background: transparent;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* ---------- MODALS (lightweight backdrop‑filter alternative) ---------- */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 1000;
+  justify-content: center;
+  align-items: flex-start;
+  overflow-y: auto;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+.modal-overlay.active {
+  display: flex;
+  opacity: 1;
+}
+
+.modal-content {
+  background: var(--chat-surface);
+  border-radius: var(--radius-lg);
+  padding: 1.4rem 1.6rem;
+  width: 92%;
+  max-width: 400px;
+  border: 1px solid var(--chat-border);
+  box-shadow: var(--shadow-lg);
+  animation: modalIn 0.2s ease-out;
+  margin: 2rem auto 1.5rem;
+  max-height: 85vh;
+  overflow-y: auto;
+  transform: translateZ(0);
+  will-change: transform;
+}
+@keyframes modalIn {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.97);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.close-btn {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  font-size: 1.5rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition:
+    background 0.2s,
+    color 0.2s;
+}
+
+h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 1.2rem;
+  text-align: center;
+  background: linear-gradient(135deg, var(--heading-start) 40%, var(--accent));
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+/* ---------- FORM ELEMENTS ---------- */
+.input-group {
+  position: relative;
+  margin-bottom: 0.6rem;
+}
+
+input[type="text"] {
+  width: 100%;
+  background: var(--chat-card);
+  border: 1px solid var(--chat-border);
+  border-radius: 1.5rem;
+  padding: 0.65rem 1rem;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+  font-family: inherit;
+  transform: translateZ(0);
+}
+input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+button[type="submit"] {
+  width: 100%;
+  background: var(--accent);
+  border: none;
+  border-radius: 2rem;
+  padding: 0.7rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: white;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    transform 0.15s;
+  font-family: inherit;
+  letter-spacing: 0.2px;
+  box-shadow: 0 4px 12px var(--accent-glow);
+  will-change: transform;
+}
+button[type="submit"]:hover {
+  background: var(--accent-dark);
+  transform: translateY(-1px);
+}
+
+/* ---------- FAB ---------- */
+.fab {
+  position: fixed;
+  bottom: 1.3rem;
+  left: 1.3rem;
+  width: 52px;
+  height: 52px;
+  background: var(--accent);
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 6px 18px var(--accent-glow);
+  transition:
+    transform 0.2s,
+    background 0.2s;
+  z-index: 999;
+  will-change: transform;
+  transform: translateZ(0);
+}
+.fab:hover {
+  transform: scale(1.07) translateY(-2px);
+  background: var(--accent-dark);
+}
+.fab .material-symbols-outlined {
+  font-size: 1.8rem;
+  color: white;
+}
+
+/* ---------- SUGGESTIONS (no heavy filter) ---------- */
+.suggestions-list {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  background: var(--chat-surface);
+  border: 1px solid var(--chat-border);
+  border-top: none;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  max-height: 150px;
+  overflow-y: auto;
+  z-index: 1020;
+  display: none;
+  margin-top: -4px;
+  box-shadow: var(--shadow-md);
+  -webkit-overflow-scrolling: touch;
+}
+
+.modal-content {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ---------- SCROLLBAR (thin, no animation) ---------- */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--accent);
+  border-radius: 10px;
+}
+
+/* ---------- SETTINGS ROWS ---------- */
+.setting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.9rem 0;
+  border-bottom: 1px solid var(--chat-border);
+}
+.setting-row:last-child {
+  border-bottom: none;
+}
+
+.font-size-controls {
+  display: flex;
+  gap: 4px;
+  background: var(--chat-bg);
+  padding: 3px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--chat-border);
+}
+
+.font-btn,
+.theme-opt-btn {
+  background: transparent;
+  border: none;
+  padding: 0.45rem 0.8rem;
+  border-radius: 0.4rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 500;
+  font-size: 0.9rem;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.font-btn.active,
+.theme-opt-btn.active {
+  background: var(--accent);
+  color: white;
+}
+
+/* ---------- EXPORT BUTTONS ---------- */
+.export-controls {
+  display: flex;
+  gap: 8px;
+}
+.export-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0.5rem 0.9rem;
+  border: none;
+  border-radius: 2rem;
+  color: white;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition:
+    transform 0.15s,
+    box-shadow 0.2s;
+  will-change: transform;
+}
+.excel-btn {
+  background: #10b981;
+}
+.pdf-btn {
+  background: #ef4444;
+}
+.export-btn:hover {
+  transform: translateY(-2px);
+}
+
+/* ---------- iOS INSTALL PROMPT ---------- */
+.ios-prompt {
+  position: fixed;
+  bottom: -100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--chat-surface);
+  border: 1px solid var(--chat-border);
+  box-shadow: var(--shadow-lg);
+  padding: 1rem 2.5rem 1rem 1rem;
+  border-radius: var(--radius-md);
+  width: 90%;
+  max-width: 400px;
+  z-index: 10000;
+  transition: bottom 0.3s ease;
+}
+.ios-prompt.show {
+  bottom: 20px;
+}
+
+/* Wraps price + icon together */
+.price-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* The tiny copy icon button */
+.copy-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  opacity: 0.5;
+  line-height: 1;
+  /* Prevent it from being a swipe target */
+  touch-action: manipulation;
+}
+
+.copy-btn .material-symbols-outlined {
+  font-size: 0.75rem; /* very tiny */
+}
+
+.copy-btn:hover,
+.copy-btn:active {
+  opacity: 1;
+  color: var(--accent);
+  background: var(--ghost-btn-bg);
+}

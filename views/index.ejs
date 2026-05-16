@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <title>سیستم مدیریت دارو</title>
+
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0"
+    />
+
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <link rel="stylesheet" href="/style.css" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#10a37f" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  </head>
+  <body>
+    <div class="container" id="pdfContainer">
+      <div class="header-container hide-for-pdf">
+        <h1>انبار داروها</h1>
+        <div class="header-actions">
+          <button id="openSettingsBtn" class="theme-btn" title="تنظیمات">
+            <span class="material-symbols-outlined">settings</span>
+          </button>
+        </div>
+      </div>
+
+      <input
+        type="text"
+        id="searchInput"
+        class="hide-for-pdf"
+        placeholder="جستجوی دارو..."
+        autocomplete="off"
+      />
+
+      <ul id="medicineList"></ul>
+    </div>
+
+    <button id="openAddModalBtn" class="fab">
+      <span class="material-symbols-outlined">add</span>
+    </button>
+
+    <div id="addModal" class="modal-overlay">
+      <div class="modal-content">
+        <span id="closeModalBtn" class="close-btn">&times;</span>
+        <h3>افزودن داروی جدید</h3>
+        <form id="addForm">
+          <div class="input-group">
+            <input
+              type="text"
+              id="newName"
+              placeholder="نام دارو"
+              required
+              autocomplete="new-password"
+            />
+            <ul id="nameSuggestions" class="suggestions-list"></ul>
+          </div>
+          <input
+            type="text"
+            inputmode="decimal"
+            id="newPrice"
+            placeholder="قیمت"
+            required
+          />
+          <button type="submit">ثبت دارو</button>
+        </form>
+      </div>
+    </div>
+
+    <div id="editModal" class="modal-overlay">
+      <div class="modal-content">
+        <span id="closeEditModalBtn" class="close-btn">&times;</span>
+        <h3>ویرایش دارو</h3>
+        <form id="editForm">
+          <input type="hidden" id="editId" />
+          <div class="input-group">
+            <input
+              type="text"
+              id="editName"
+              placeholder="نام دارو"
+              required
+              autocomplete="off"
+            />
+          </div>
+          <input
+            type="text"
+            inputmode="decimal"
+            id="editPrice"
+            placeholder="قیمت"
+            required
+          />
+          <button type="submit" style="margin-top: 15px">بروزرسانی</button>
+        </form>
+      </div>
+    </div>
+
+    <div id="errorToast" class="toast">
+      <span class="material-symbols-outlined">error</span>
+      <span id="toastMessage">پیام خطا</span>
+    </div>
+
+    <div id="undoToast" class="toast undo-toast">
+      <span>دارو حذف شد</span>
+      <button id="undoBtn">لغو (بازگردانی)</button>
+    </div>
+
+    <div id="settingsModal" class="modal-overlay">
+      <div class="modal-content">
+        <span id="closeSettingsBtn" class="close-btn">&times;</span>
+        <h3>تنظیمات سیستم</h3>
+
+        <div class="setting-row">
+          <span>پوسته</span>
+          <div class="font-size-controls">
+            <button class="theme-opt-btn" data-theme-val="dark">تاریک</button>
+            <button class="theme-opt-btn" data-theme-val="light">سفید</button>
+            <button class="theme-opt-btn" data-theme-val="warm">کرمی</button>
+            <button class="theme-opt-btn" data-theme-val="cool">یخی</button>
+          </div>
+        </div>
+
+        <div class="setting-row">
+          <span>اندازه متن</span>
+          <div class="font-size-controls">
+            <button class="font-btn" data-size="14px">کوچک</button>
+            <button class="font-btn active" data-size="16px">متوسط</button>
+            <button class="font-btn" data-size="18px">بزرگ</button>
+          </div>
+        </div>
+
+        <div class="setting-row">
+          <span>خروجی اطلاعات</span>
+          <div class="export-controls">
+            <button id="downloadExcelBtn" class="export-btn excel-btn">
+              <span class="material-symbols-outlined">table_view</span> اکسل
+            </button>
+            <button
+              id="downloadPdfBtn"
+              class="export-btn pdf-btn"
+              style="display: none"
+            >
+              <span class="material-symbols-outlined">picture_as_pdf</span>
+              پی‌دی‌اف
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="iosInstallPrompt" class="ios-prompt">
+      <button id="closeIosPrompt" class="close-ios-btn">&times;</button>
+      <p>
+        برای نصب اپلیکیشن، دکمه
+        <span class="material-symbols-outlined ios-share-icon">ios_share</span>
+        را زده و <strong>Add to Home Screen</strong> را انتخاب کنید.
+      </p>
+    </div>
+
+    <script>
+      window.INITIAL_DATA = JSON.parse(`<%- medicinesData %>`);
+    </script>
+    <script src="/app.js"></script>
+  </body>
+</html>
