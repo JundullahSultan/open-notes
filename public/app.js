@@ -556,7 +556,7 @@ addForm.addEventListener("submit", async (e) => {
     queue.push(tempMed);
     localStorage.setItem("offlineQueue", JSON.stringify(queue));
 
-    localMedicines.unshift(tempMed);
+    localMedicines.push(tempMed);
     nameInput.value = "";
     priceInput.value = "";
     addModal.style.display = "none";
@@ -585,7 +585,7 @@ addForm.addEventListener("submit", async (e) => {
       newMed._nameWords = newMed._normName
         .split(" ")
         .filter((w) => w.length > 0);
-      localMedicines.unshift(newMed);
+      localMedicines.push(newMed);
       nameInput.value = "";
       priceInput.value = "";
       addModal.style.display = "none";
@@ -720,7 +720,7 @@ undoBtn.addEventListener("click", () => {
     med._normName = normalizeText(med.name);
     med._nameWords = med._normName.split(" ").filter((w) => w.length > 0);
   }
-  localMedicines.unshift(med);
+ localMedicines.push(med);
   searchInput.value = "";
   renderList(localMedicines);
 
