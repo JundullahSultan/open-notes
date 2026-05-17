@@ -101,7 +101,7 @@ app.post("/api/medicines", async (req, res) => {
   };
 
   // ۴. اضافه کردن داروی جدید به لیست و ذخیره مجدد کل لیست در فایل
-  medicines.unshift(newMedicine); // unshift دارو را به بالای فایل اضافه می‌کند
+  medicines.push(newMedicine); // unshift دارو را به بالای فایل اضافه می‌کند
   await saveMedicines(medicines);
 
   // ۵. ارسال تاییدیه به فرانت‌اند

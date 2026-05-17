@@ -138,6 +138,19 @@ button,
     border-color 0.3s ease;
 }
 
+.search-container {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+
+  /* Optional but recommended: Add a background color so scrolling text doesn't show behind it */
+  background-color: var(--chat-surface);
+
+  /* Add some padding if it sits too flush against the top */
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
 .header-container {
   display: flex;
   justify-content: space-between;
