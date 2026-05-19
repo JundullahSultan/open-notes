@@ -7,32 +7,41 @@
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
     <title>سیستم مدیریت دارو</title>
-
     <link
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0"
     />
-
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-
     <link rel="stylesheet" href="/style.css" />
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#10a37f" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
-
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta
       name="apple-mobile-web-app-status-bar-style"
       content="black-translucent"
     />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
   </head>
   <body>
     <div class="container" id="pdfContainer">
       <div class="header-container hide-for-pdf">
         <h1>انبار داروها</h1>
-        <div class="header-actions">
+
+        <div
+          class="header-actions"
+          style="display: flex; gap: 8px; align-items: center"
+        >
+          <form action="/logout" method="POST" style="margin: 0">
+            <button
+              type="submit"
+              class="theme-btn"
+              title="خروج"
+              style="color: var(--danger); border-color: rgba(239, 68, 68, 0.2)"
+            >
+              <span class="material-symbols-outlined">logout</span>
+            </button>
+          </form>
           <button id="openSettingsBtn" class="theme-btn" title="تنظیمات">
             <span class="material-symbols-outlined">settings</span>
           </button>
@@ -124,7 +133,6 @@
       <div class="modal-content">
         <span id="closeSettingsBtn" class="close-btn">&times;</span>
         <h3>تنظیمات سیستم</h3>
-
         <div class="setting-row">
           <span>پوسته</span>
           <div class="font-size-controls">
@@ -134,7 +142,6 @@
             <button class="theme-opt-btn" data-theme-val="cool">یخی</button>
           </div>
         </div>
-
         <div class="setting-row">
           <span>اندازه متن</span>
           <div class="font-size-controls">
@@ -143,7 +150,6 @@
             <button class="font-btn" data-size="18px">بزرگ</button>
           </div>
         </div>
-
         <div class="setting-row">
           <span>خروجی اطلاعات</span>
           <div class="export-controls">
@@ -174,6 +180,19 @@
 
     <script>
       window.INITIAL_DATA = JSON.parse(`<%- medicinesData %>`);
+    </script>
+    <script>
+      window.INITIAL_DATA = JSON.parse(`<%- medicinesData %>`);
+
+      // --- NEW: Real-time logout listener ---
+      const evtSource = new EventSource("/api/session-stream");
+      evtSource.onmessage = function (event) {
+        if (event.data === "force_logout") {
+          // If server tells us to log out, instantly navigate to root.
+          // The backend will see our session is dead and bounce us to the login screen.
+          window.location.href = "/";
+        }
+      };
     </script>
     <script src="/app.js"></script>
   </body>

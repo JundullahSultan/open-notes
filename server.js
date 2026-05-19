@@ -1,39 +1,35 @@
 const express = require("express");
 const path = require("path");
-const fs = require("fs").promises; // اضافه شدن ماژول فایل سیستم
+const mongoose = require("mongoose");
+const session = require("express-session");
+const bcrypt = require("bcrypt");
 
 const app = express();
-const DATA_FILE = path.join(__dirname, "data.json"); // مسیر فایل دیتابیس
 
-// --- توابع کمکی برای خواندن و نوشتن در فایل ---
+// --- MongoDB Connection ---
+const MONGO_URI = "mongodb://127.0.0.1:27017/open-notes";
+mongoose
+  .connect(MONGO_URI)
+  .then(() => console.log("✅ Successfully connected to MongoDB"))
+  .catch((error) => console.error("❌ Error connecting to MongoDB:", error));
 
-// خواندن اطلاعات از فایل
-async function getMedicines() {
-  try {
-    const data = await fs.readFile(DATA_FILE, "utf8");
-    return JSON.parse(data);
-  } catch (error) {
-    // اگر فایل هنوز ساخته نشده بود یا خالی بود، یک آرایه خالی برمی‌گرداند
-    if (error.code === "ENOENT") {
-      return [];
-    }
-    console.error("خطا در خواندن فایل data.json:", error);
-    return [];
-  }
-}
+// --- Mongoose Schemas & Models ---
+const userSchema = new mongoose.Schema({
+  username: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  activeSessionId: { type: String, default: null },
+});
+const User = mongoose.model("User", userSchema);
 
-// نوشتن اطلاعات جدید در فایل
-async function saveMedicines(medicines) {
-  try {
-    // تبدیل آرایه به متن فرمت‌شده JSON و ذخیره آن
-    await fs.writeFile(DATA_FILE, JSON.stringify(medicines, null, 2), "utf8");
-  } catch (error) {
-    console.error("خطا در ذخیره فایل data.json:", error);
-  }
-}
+const medicineSchema = new mongoose.Schema({
+  id: { type: Number, required: true, unique: true },
+  name: { type: String, required: true },
+  price: { type: String, required: true },
+  quantity: { type: Number, default: 0 },
+});
+const Medicine = mongoose.model("Medicine", medicineSchema);
 
-// --- تنظیمات سرور ---
-
+// --- App Configuration ---
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
@@ -41,131 +37,225 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
 
-// --- روت‌های (Routes) اپلیکیشن ---
+// --- Session Setup ---
+app.use(
+  session({
+    secret: "open-notes-super-secret-key-123",
+    resave: false,
+    saveUninitialized: false,
+    cookie: { maxAge: 1000 * 60 * 60 * 24 },
+  }),
+);
 
-// ۱. روت اصلی: خواندن فایل و ارسال به سمت کاربر
-app.get("/", async (req, res) => {
-  const medicines = await getMedicines(); // خواندن زنده از فایل
-  res.render("index", { medicinesData: JSON.stringify(medicines) });
+// --- Real-time Connections Store (SSE) ---
+// This keeps track of all browsers currently looking at the app
+const sseClients = new Map();
+
+// --- Authentication Middleware ---
+const requireAuth = async (req, res, next) => {
+  if (req.session.isLoggedIn && req.session.userId) {
+    try {
+      const user = await User.findById(req.session.userId);
+
+      // If this session matches the one in the database, allow it
+      if (user && user.activeSessionId === req.sessionID) {
+        return next();
+      } else {
+        // Not the active session anymore. Destroy memory and kick out.
+        req.session.destroy(() => {
+          if (req.originalUrl.startsWith("/api/")) {
+            return res
+              .status(401)
+              .json({ success: false, message: "نشست شما منقضی شده است." });
+          }
+          res.redirect("/login?error=concurrent_login");
+        });
+      }
+    } catch (error) {
+      console.error("Auth error:", error);
+      res.redirect("/login");
+    }
+  } else {
+    if (req.originalUrl.startsWith("/api/"))
+      return res.status(401).json({ success: false });
+    res.redirect("/login");
+  }
+};
+
+// --- Helper Function ---
+const normalizeText = (str) => {
+  return str
+    .replace(/ي/g, "ی")
+    .replace(/ك/g, "ک")
+    .replace(/\u200C/g, " ")
+    .toLowerCase()
+    .trim();
+};
+
+// --- Real-Time Stream Route ---
+// The frontend connects to this to listen for logout commands
+app.get("/api/session-stream", (req, res) => {
+  if (!req.session.isLoggedIn) return res.status(401).end();
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+
+  // Save this connection to our map
+  sseClients.set(req.sessionID, res);
+
+  // Remove them from the map if they close the browser tab
+  req.on("close", () => {
+    sseClients.delete(req.sessionID);
+  });
 });
 
-// ۲. روت API: ثبت داروی جدید و بررسی تکراری نبودن
-app.post("/api/medicines", async (req, res) => {
-  const { name, price } = req.body;
+// --- Authentication Routes ---
+app.get("/login", (req, res) => {
+  if (req.session.isLoggedIn) return res.redirect("/");
 
-  if (!name || !price) {
-    return res
-      .status(400)
-      .json({ success: false, message: "نام و قیمت الزامی است." });
+  let errorMsg = null;
+  if (req.query.error === "concurrent_login") {
+    errorMsg = "شخص دیگری با این حساب وارد شده است. شما خارج شدید.";
   }
+  res.render("login", { error: errorMsg });
+});
 
-  const normalizeText = (str) => {
-    return str
-      .replace(/ي/g, "ی")
-      .replace(/ك/g, "ک")
-      .replace(/\u200C/g, " ")
-      .toLowerCase()
-      .trim();
-  };
+app.post("/login", async (req, res) => {
+  const { username, password } = req.body;
+  try {
+    const user = await User.findOne({ username: username });
+    if (!user)
+      return res.render("login", {
+        error: "نام کاربری یا رمز عبور اشتباه است!",
+      });
 
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (isMatch) {
+      // INSTANT KICK LOGIC:
+      // If someone else is currently connected, send them the force_logout signal
+      if (user.activeSessionId && sseClients.has(user.activeSessionId)) {
+        const oldClient = sseClients.get(user.activeSessionId);
+        oldClient.write("data: force_logout\n\n");
+        sseClients.delete(user.activeSessionId);
+      }
+
+      // Log the new user in
+      req.session.isLoggedIn = true;
+      req.session.userId = user._id;
+      user.activeSessionId = req.sessionID;
+      await user.save();
+
+      res.redirect("/");
+    } else {
+      res.render("login", { error: "نام کاربری یا رمز عبور اشتباه است!" });
+    }
+  } catch (error) {
+    console.error("Login error:", error);
+    res.render("login", { error: "خطای سرور. لطفا دوباره تلاش کنید." });
+  }
+});
+
+app.post("/logout", async (req, res) => {
+  if (req.session.userId) {
+    try {
+      await User.findByIdAndUpdate(req.session.userId, {
+        activeSessionId: null,
+      });
+    } catch (e) {}
+  }
+  req.session.destroy(() => res.redirect("/login"));
+});
+
+// --- App Routes (Protected) ---
+app.get("/", requireAuth, async (req, res) => {
+  try {
+    const medicines = await Medicine.find({}, "-_id -__v").sort({ id: 1 });
+    res.render("index", { medicinesData: JSON.stringify(medicines) });
+  } catch (error) {
+    res.status(500).send("Database error");
+  }
+});
+
+app.post("/api/medicines", requireAuth, async (req, res) => {
+  const { name, price } = req.body;
+  if (!name || !price) return res.status(400).json({ success: false });
   const normalizedNewName = normalizeText(name);
 
-  // ۱. خواندن آخرین نسخه دیتابیس از فایل
-  const medicines = await getMedicines();
+  try {
+    const allMedicines = await Medicine.find();
+    if (allMedicines.some((m) => normalizeText(m.name) === normalizedNewName)) {
+      return res
+        .status(409)
+        .json({
+          success: false,
+          message: "این دارو قبلاً در سیستم ثبت شده است!",
+        });
+    }
 
-  // ۲. بررسی تکراری بودن دارو
-  const medicineExists = medicines.some(
-    (med) => normalizeText(med.name) === normalizedNewName,
-  );
+    const highest = await Medicine.findOne().sort({ id: -1 });
+    const nextId = highest ? highest.id + 1 : 1;
 
-  if (medicineExists) {
-    return res.status(409).json({
-      success: false,
-      message: "این دارو قبلاً در سیستم ثبت شده است!",
+    const newMedicine = new Medicine({
+      id: nextId,
+      name: name.trim(),
+      price,
+      quantity: 0,
     });
+    await newMedicine.save();
+
+    const responseMed = newMedicine.toObject();
+    delete responseMed._id;
+    delete responseMed.__v;
+    res.json({ success: true, medicine: responseMed });
+  } catch (error) {
+    res.status(500).json({ success: false });
   }
-
-  // 3. Create the new medicine object with sequential ID
-  let nextId = 1;
-  if (medicines.length > 0) {
-    // Find the highest existing ID and add 1
-    const highestId = Math.max(...medicines.map((m) => m.id));
-    nextId = highestId + 1;
-  }
-
-  const newMedicine = {
-    id: nextId,
-    name: name.trim(),
-    price: price,
-    quantity: 0,
-  };
-
-  // ۴. اضافه کردن داروی جدید به لیست و ذخیره مجدد کل لیست در فایل
-  medicines.push(newMedicine); // unshift دارو را به بالای فایل اضافه می‌کند
-  await saveMedicines(medicines);
-
-  // ۵. ارسال تاییدیه به فرانت‌اند
-  res.json({ success: true, medicine: newMedicine });
 });
 
-// 4 . API Route: Handle UPDATING a medicine
-app.put("/api/medicines/:id", async (req, res) => {
+app.put("/api/medicines/:id", requireAuth, async (req, res) => {
   const id = parseInt(req.params.id);
   const { name, price } = req.body;
-
-  if (!name || !price) {
-    return res
-      .status(400)
-      .json({ success: false, message: "نام و قیمت الزامی است." });
-  }
-
-  const normalizeText = (str) =>
-    str
-      .replace(/ي/g, "ی")
-      .replace(/ك/g, "ک")
-      .replace(/\u200C/g, " ")
-      .toLowerCase()
-      .trim();
+  if (!name || !price) return res.status(400).json({ success: false });
   const normalizedNewName = normalizeText(name);
 
-  let medicines = await getMedicines();
-  const medIndex = medicines.findIndex((m) => m.id === id);
+  try {
+    const allMedicines = await Medicine.find();
+    if (
+      allMedicines.find(
+        (m) => m.id !== id && normalizeText(m.name) === normalizedNewName,
+      )
+    ) {
+      return res
+        .status(409)
+        .json({
+          success: false,
+          message: "این نام قبلاً برای داروی دیگری ثبت شده است!",
+        });
+    }
 
-  if (medIndex === -1) {
-    return res.status(404).json({ success: false, message: "دارو یافت نشد." });
+    const updatedMedicine = await Medicine.findOneAndUpdate(
+      { id: id },
+      { name: name.trim(), price: price },
+      { new: true, select: "-_id -__v" },
+    );
+    if (!updatedMedicine) return res.status(404).json({ success: false });
+    res.json({ success: true, medicine: updatedMedicine });
+  } catch (error) {
+    res.status(500).json({ success: false });
   }
-
-  // Ensure they aren't renaming it to another medicine that already exists
-  const duplicate = medicines.find(
-    (m) => m.id !== id && normalizeText(m.name) === normalizedNewName,
-  );
-  if (duplicate) {
-    return res.status(409).json({
-      success: false,
-      message: "این نام قبلاً برای داروی دیگری ثبت شده است!",
-    });
-  }
-
-  medicines[medIndex].name = name.trim();
-  medicines[medIndex].price = price;
-  await saveMedicines(medicines);
-
-  res.json({ success: true, medicine: medicines[medIndex] });
 });
 
-// 4. API Route: Handle DELETING a medicine
-app.delete("/api/medicines/:id", async (req, res) => {
-  const id = parseInt(req.params.id);
-  let medicines = await getMedicines();
-
-  // Filter out the medicine with this ID
-  medicines = medicines.filter((m) => m.id !== id);
-  await saveMedicines(medicines);
-
-  res.json({ success: true });
+app.delete("/api/medicines/:id", requireAuth, async (req, res) => {
+  try {
+    await Medicine.findOneAndDelete({ id: parseInt(req.params.id) });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false });
+  }
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});
+app.listen(PORT, () =>
+  console.log(`Server running on http://localhost:${PORT}`),
+);

@@ -666,6 +666,7 @@ button[type="submit"]:hover {
 
 /* ---------- iOS INSTALL PROMPT ---------- */
 .ios-prompt {
+  display: none !important;
   position: fixed;
   bottom: -100px;
   left: 50%;
