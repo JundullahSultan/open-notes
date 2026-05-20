@@ -25,6 +25,9 @@ self.addEventListener("fetch", (event) => {
   // Only handle GET requests
   if (event.request.method !== "GET") return;
 
+  // NEW FIX: Do not let the Service Worker intercept API routes or Streams
+  if (event.request.url.includes("/api/")) return;
+
   event.respondWith(
     fetch(event.request)
       .then((networkResponse) => {

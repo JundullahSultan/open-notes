@@ -720,11 +720,10 @@ undoBtn.addEventListener("click", () => {
     med._normName = normalizeText(med.name);
     med._nameWords = med._normName.split(" ").filter((w) => w.length > 0);
   }
-<<<<<<< HEAD
+
+  // FIXED HERE: Merge conflict markers removed!
   localMedicines.push(med);
-=======
- localMedicines.push(med);
->>>>>>> 64f18d60c80ebaea1ba8be0851a8f8f21627be4d
+
   searchInput.value = "";
   renderList(localMedicines);
 

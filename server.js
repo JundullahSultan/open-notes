@@ -1,33 +1,18 @@
 const express = require("express");
 const path = require("path");
-const mongoose = require("mongoose");
 const session = require("express-session");
 const bcrypt = require("bcrypt");
+const admin = require("firebase-admin");
 
 const app = express();
 
-// --- MongoDB Connection ---
-const MONGO_URI = "mongodb://127.0.0.1:27017/open-notes";
-mongoose
-  .connect(MONGO_URI)
-  .then(() => console.log("✅ Successfully connected to MongoDB"))
-  .catch((error) => console.error("❌ Error connecting to MongoDB:", error));
-
-// --- Mongoose Schemas & Models ---
-const userSchema = new mongoose.Schema({
-  username: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  activeSessionId: { type: String, default: null },
+// --- Firebase Connection ---
+const serviceAccount = require("./serviceAccountKey.json");
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
 });
-const User = mongoose.model("User", userSchema);
-
-const medicineSchema = new mongoose.Schema({
-  id: { type: Number, required: true, unique: true },
-  name: { type: String, required: true },
-  price: { type: String, required: true },
-  quantity: { type: Number, default: 0 },
-});
-const Medicine = mongoose.model("Medicine", medicineSchema);
+const db = admin.firestore();
+console.log("✅ Successfully connected to Firebase Firestore");
 
 // --- App Configuration ---
 app.set("view engine", "ejs");
@@ -55,7 +40,11 @@ const sseClients = new Map();
 const requireAuth = async (req, res, next) => {
   if (req.session.isLoggedIn && req.session.userId) {
     try {
-      const user = await User.findById(req.session.userId);
+      const userDoc = await db
+        .collection("users")
+        .doc(req.session.userId)
+        .get();
+      const user = userDoc.exists ? userDoc.data() : null;
 
       // If this session matches the one in the database, allow it
       if (user && user.activeSessionId === req.sessionID) {
@@ -124,11 +113,21 @@ app.get("/login", (req, res) => {
 app.post("/login", async (req, res) => {
   const { username, password } = req.body;
   try {
-    const user = await User.findOne({ username: username });
-    if (!user)
+    // Find the user by username in Firestore
+    const userSnapshot = await db
+      .collection("users")
+      .where("username", "==", username)
+      .limit(1)
+      .get();
+    if (userSnapshot.empty) {
       return res.render("login", {
         error: "نام کاربری یا رمز عبور اشتباه است!",
       });
+    }
+
+    const userDoc = userSnapshot.docs[0];
+    const user = userDoc.data();
+    const userId = userDoc.id;
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (isMatch) {
@@ -142,9 +141,13 @@ app.post("/login", async (req, res) => {
 
       // Log the new user in
       req.session.isLoggedIn = true;
-      req.session.userId = user._id;
-      user.activeSessionId = req.sessionID;
-      await user.save();
+      req.session.userId = userId;
+
+      // Update activeSessionId in Firestore
+      await db
+        .collection("users")
+        .doc(userId)
+        .update({ activeSessionId: req.sessionID });
 
       res.redirect("/");
     } else {
@@ -159,10 +162,12 @@ app.post("/login", async (req, res) => {
 app.post("/logout", async (req, res) => {
   if (req.session.userId) {
     try {
-      await User.findByIdAndUpdate(req.session.userId, {
+      await db.collection("users").doc(req.session.userId).update({
         activeSessionId: null,
       });
-    } catch (e) {}
+    } catch (e) {
+      console.error("Error clearing session in DB during logout", e);
+    }
   }
   req.session.destroy(() => res.redirect("/login"));
 });
@@ -170,9 +175,14 @@ app.post("/logout", async (req, res) => {
 // --- App Routes (Protected) ---
 app.get("/", requireAuth, async (req, res) => {
   try {
-    const medicines = await Medicine.find({}, "-_id -__v").sort({ id: 1 });
+    const snapshot = await db
+      .collection("medicines")
+      .orderBy("id", "asc")
+      .get();
+    const medicines = snapshot.docs.map((doc) => doc.data());
     res.render("index", { medicinesData: JSON.stringify(medicines) });
   } catch (error) {
+    console.error("Database error:", error);
     res.status(500).send("Database error");
   }
 });
@@ -183,74 +193,89 @@ app.post("/api/medicines", requireAuth, async (req, res) => {
   const normalizedNewName = normalizeText(name);
 
   try {
-    const allMedicines = await Medicine.find();
+    const allMedicinesSnapshot = await db.collection("medicines").get();
+    const allMedicines = allMedicinesSnapshot.docs.map((doc) => doc.data());
+
     if (allMedicines.some((m) => normalizeText(m.name) === normalizedNewName)) {
-      return res
-        .status(409)
-        .json({
-          success: false,
-          message: "این دارو قبلاً در سیستم ثبت شده است!",
-        });
+      return res.status(409).json({
+        success: false,
+        message: "این دارو قبلاً در سیستم ثبت شده است!",
+      });
     }
 
-    const highest = await Medicine.findOne().sort({ id: -1 });
-    const nextId = highest ? highest.id + 1 : 1;
+    const highestSnapshot = await db
+      .collection("medicines")
+      .orderBy("id", "desc")
+      .limit(1)
+      .get();
+    const highestId = highestSnapshot.empty
+      ? 0
+      : highestSnapshot.docs[0].data().id;
+    const nextId = highestId + 1;
 
-    const newMedicine = new Medicine({
+    const newMedicine = {
       id: nextId,
       name: name.trim(),
       price,
       quantity: 0,
-    });
-    await newMedicine.save();
+    };
 
-    const responseMed = newMedicine.toObject();
-    delete responseMed._id;
-    delete responseMed.__v;
-    res.json({ success: true, medicine: responseMed });
+    // Save to Firestore using ID as the document string key
+    await db.collection("medicines").doc(nextId.toString()).set(newMedicine);
+
+    res.json({ success: true, medicine: newMedicine });
   } catch (error) {
+    console.error("Add medicine error:", error);
     res.status(500).json({ success: false });
   }
 });
 
 app.put("/api/medicines/:id", requireAuth, async (req, res) => {
-  const id = parseInt(req.params.id);
+  const idStr = req.params.id;
+  const idNum = parseInt(idStr);
   const { name, price } = req.body;
+
   if (!name || !price) return res.status(400).json({ success: false });
   const normalizedNewName = normalizeText(name);
 
   try {
-    const allMedicines = await Medicine.find();
+    const allMedicinesSnapshot = await db.collection("medicines").get();
+    const allMedicines = allMedicinesSnapshot.docs.map((doc) => doc.data());
+
     if (
       allMedicines.find(
-        (m) => m.id !== id && normalizeText(m.name) === normalizedNewName,
+        (m) => m.id !== idNum && normalizeText(m.name) === normalizedNewName,
       )
     ) {
-      return res
-        .status(409)
-        .json({
-          success: false,
-          message: "این نام قبلاً برای داروی دیگری ثبت شده است!",
-        });
+      return res.status(409).json({
+        success: false,
+        message: "این نام قبلاً برای داروی دیگری ثبت شده است!",
+      });
     }
 
-    const updatedMedicine = await Medicine.findOneAndUpdate(
-      { id: id },
-      { name: name.trim(), price: price },
-      { new: true, select: "-_id -__v" },
-    );
-    if (!updatedMedicine) return res.status(404).json({ success: false });
-    res.json({ success: true, medicine: updatedMedicine });
+    const docRef = db.collection("medicines").doc(idStr);
+    const doc = await docRef.get();
+
+    if (!doc.exists) return res.status(404).json({ success: false });
+
+    await docRef.update({ name: name.trim(), price: price });
+
+    // Fetch updated document to respond with
+    const updatedDoc = await docRef.get();
+    res.json({ success: true, medicine: updatedDoc.data() });
   } catch (error) {
+    console.error("Update medicine error:", error);
     res.status(500).json({ success: false });
   }
 });
 
 app.delete("/api/medicines/:id", requireAuth, async (req, res) => {
   try {
-    await Medicine.findOneAndDelete({ id: parseInt(req.params.id) });
+    const idStr = req.params.id;
+    await db.collection("medicines").doc(idStr).delete();
     res.json({ success: true });
   } catch (error) {
+    console.error("Delete medicine error:", error);
     res.status(500).json({ success: false });
   }
 });
