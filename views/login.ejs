@@ -77,6 +77,10 @@
   </head>
   <body>
 
+    <div id="globalLoader" class="loader-overlay">
+      <div class="loader"></div>
+    </div>
+
     <div class="login-card">
       <span class="material-symbols-outlined login-icon">admin_panel_settings</span>
       <h2>ورود به انبار داروها</h2>
@@ -95,5 +99,18 @@
       </form>
     </div>
 
+    <script>
+      const loginForm = document.querySelector("form");
+      const globalLoader = document.getElementById("globalLoader");
+
+      if (loginForm && globalLoader) {
+        loginForm.addEventListener("submit", () => {
+          // As soon as the user clicks submit, show the loader.
+          // We don't need to hide it, because the server will 
+          // either redirect or reload the page for us!
+          globalLoader.classList.add("active");
+        });
+      }
+    </script>
   </body>
 </html>

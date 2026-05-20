@@ -13,6 +13,10 @@ const settingsModal = document.getElementById("settingsModal");
 const openSettingsBtn = document.getElementById("openSettingsBtn");
 const closeSettingsBtn = document.getElementById("closeSettingsBtn");
 
+const globalLoader = document.getElementById("globalLoader");
+const showLoader = () => globalLoader?.classList.add("active");
+const hideLoader = () => globalLoader?.classList.remove("active");
+
 openSettingsBtn?.addEventListener("click", () => {
   if (settingsModal) settingsModal.style.display = "flex";
 });
@@ -568,6 +572,8 @@ addForm.addEventListener("submit", async (e) => {
     return;
   }
 
+  showLoader(); // <--- START LOADER
+
   try {
     const response = await fetch("/api/medicines", {
       method: "POST",
@@ -596,6 +602,8 @@ addForm.addEventListener("submit", async (e) => {
     }
   } catch (error) {
     showError("خطا در ارتباط با سرور. آیا به اینترنت متصل هستید؟");
+  } finally {
+    hideLoader(); // <--- STOP LOADER
   }
 });
 
@@ -634,6 +642,8 @@ editForm.addEventListener("submit", async (e) => {
   const newName = editNameInput.value.trim();
   const newPrice = editPriceInput.value.trim();
 
+  showLoader(); // <--- START LOADER
+
   try {
     const response = await fetch(`/api/medicines/${id}`, {
       method: "PUT",
@@ -661,6 +671,8 @@ editForm.addEventListener("submit", async (e) => {
     }
   } catch (error) {
     showError("خطا در ارتباط با سرور.");
+  } finally {
+    hideLoader(); // <--- STOP LOADER
   }
 });
 
@@ -671,13 +683,17 @@ editForm.addEventListener("submit", async (e) => {
 async function commitDeletion(med) {
   if (!med) return;
   if (!navigator.onLine) {
-    // Optionally handle offline deletes later if needed
     return showError("شما آفلاین هستید. دارو حذف نشد.");
   }
+
+  showLoader(); // <--- START LOADER
+
   try {
     await fetch(`/api/medicines/${med.id}`, { method: "DELETE" });
   } catch (error) {
     console.error("Delete failed on server", error);
+  } finally {
+    hideLoader(); // <--- STOP LOADER
   }
 }
 
